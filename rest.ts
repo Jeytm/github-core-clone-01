@@ -303,7 +303,7 @@ export function handleRest(
   body: unknown,
   base: string,
 ): RestReply {
-  const [first, second, third, fourth, fifth, ...rest] = segments;
+  const [first, second, third] = segments;
 
   // API root and meta.
   if (segments.length === 0) {
@@ -607,7 +607,7 @@ function handleContents(
         url: `${base}/api/v3/repos/${repo.owner}/${repo.name}/contents/${entry.path}`,
         git_url: `${base}/api/v3/repos/${repo.owner}/${repo.name}/git/trees/${entry.oid}`,
         html_url: `${base}/${repo.owner}/${repo.name}/tree/HEAD/${entry.path}`,
-        download_url: entry.mode === '40000' ? null : null,
+        download_url: null,
         _links: {},
       })),
     );
@@ -646,15 +646,8 @@ function handleContents(
       }
       if (!existed && expectedSha !== null) return err(404, 'Not Found');
       const blobOid = store.putObject(repo, 'blob', content);
-      const flat = tip === undefined ? new Map() : store.flattenTree(repo, store.commitInfo(repo, tip)?.tree ?? '');
-      if (tip !== undefined) {
-        const info = store.commitInfo(repo, tip);
-        if (info) {
-          const existing = store.flattenTree(repo, info.tree);
-          flat.clear();
-          for (const [key, value] of existing) flat.set(key, value);
-        }
-      }
+      const baseInfo = tip === undefined ? null : store.commitInfo(repo, tip);
+      const flat = baseInfo ? store.flattenTree(repo, baseInfo.tree) : new Map<string, { oid: string; mode: string }>();
       flat.set(path, { oid: blobOid, mode: '100644' });
       const tree = store.buildTreeFromMap(repo, flat);
       const parents = tip === undefined ? [] : [tip];
